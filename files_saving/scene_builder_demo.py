@@ -11,7 +11,7 @@ Scenario: Kitchen safety scene
 """
 
 import torch
-from scene_graph_builder import (
+from files_saving.scene_graph_builder import (
     NeuralPredicateParser,
     SceneGraphBuilder,
     SpatialRelationConfig,

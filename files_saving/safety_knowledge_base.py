@@ -46,7 +46,9 @@ from enum import Enum, auto
 from knowledge_base import KnowledgeBase, Rule, Literal
 
 
+# ═══════════════════════════════════════════════════════════
 # Part 1: Safety Rule Data Structures
+# ═══════════════════════════════════════════════════════════
 
 class SafetyCategory(Enum):
     """Categories of safety hazards."""
@@ -105,7 +107,9 @@ class SafetyRuleTemplate:
         )
 
 
+# ═══════════════════════════════════════════════════════════
 # Part 2: Safety Knowledge Base
+# ═══════════════════════════════════════════════════════════
 
 class SafetyKnowledgeBase:
     """
@@ -179,7 +183,9 @@ class SafetyKnowledgeBase:
         return "\n".join(lines)
 
 
+# ═══════════════════════════════════════════════════════════
 # Part 3: Pre-built Safety Knowledge Bases
+# ═══════════════════════════════════════════════════════════
 
 def create_embodied_safety_kb() -> SafetyKnowledgeBase:
     """
@@ -204,7 +210,9 @@ def create_embodied_safety_kb() -> SafetyKnowledgeBase:
     """
     skb = SafetyKnowledgeBase()
 
+    # ══════════════════════════════════════════
     # FIRE HAZARDS
+    # ══════════════════════════════════════════
 
     skb.add_template(SafetyRuleTemplate(
         name="fire_near_flammable",
@@ -260,7 +268,9 @@ def create_embodied_safety_kb() -> SafetyKnowledgeBase:
         mitigating_actions=["cover", "remove", "smother"],
     ))
 
+    # ══════════════════════════════════════════
     # ELECTRICAL HAZARDS
+    # ══════════════════════════════════════════
 
     skb.add_template(SafetyRuleTemplate(
         name="electric_water_near_power",
@@ -298,7 +308,9 @@ def create_embodied_safety_kb() -> SafetyKnowledgeBase:
         mitigating_actions=["dry_hands", "unplug", "step_back"],
     ))
 
+    # ══════════════════════════════════════════
     # BURN HAZARDS
+    # ══════════════════════════════════════════
 
     skb.add_template(SafetyRuleTemplate(
         name="burn_touch_hot_surface",
@@ -336,7 +348,9 @@ def create_embodied_safety_kb() -> SafetyKnowledgeBase:
         mitigating_actions=["move_away", "handle_carefully"],
     ))
 
+    # ══════════════════════════════════════════
     # CUT / SHARP OBJECT HAZARDS
+    # ══════════════════════════════════════════
 
     skb.add_template(SafetyRuleTemplate(
         name="cut_child_near_sharp",
@@ -394,7 +408,9 @@ def create_embodied_safety_kb() -> SafetyKnowledgeBase:
         mitigating_actions=["cover_blade", "store_safely"],
     ))
 
+    # ══════════════════════════════════════════
     # CHEMICAL / POISON HAZARDS
+    # ══════════════════════════════════════════
 
     skb.add_template(SafetyRuleTemplate(
         name="chemical_toxic_not_contained",
@@ -434,7 +450,9 @@ def create_embodied_safety_kb() -> SafetyKnowledgeBase:
         mitigating_actions=["lock_away", "move_out_of_reach", "store_high"],
     ))
 
+    # ══════════════════════════════════════════
     # FALL / CRUSH HAZARDS
+    # ══════════════════════════════════════════
 
     skb.add_template(SafetyRuleTemplate(
         name="fall_heavy_above",
@@ -472,7 +490,9 @@ def create_embodied_safety_kb() -> SafetyKnowledgeBase:
         mitigating_actions=["redistribute", "secure", "move_to_stable"],
     ))
 
+    # ══════════════════════════════════════════
     # SLIP HAZARDS
+    # ══════════════════════════════════════════
 
     skb.add_template(SafetyRuleTemplate(
         name="slip_liquid_on_floor",
@@ -493,7 +513,9 @@ def create_embodied_safety_kb() -> SafetyKnowledgeBase:
         mitigating_actions=["clean_up", "mark_wet", "walk_around"],
     ))
 
+    # ══════════════════════════════════════════
     # COLLISION HAZARDS
+    # ══════════════════════════════════════════
 
     skb.add_template(SafetyRuleTemplate(
         name="collision_running_near_person",
@@ -513,7 +535,9 @@ def create_embodied_safety_kb() -> SafetyKnowledgeBase:
         mitigating_actions=["slow_down", "change_path", "alert"],
     ))
 
+    # ══════════════════════════════════════════
     # CHILD-SPECIFIC SAFETY
+    # ══════════════════════════════════════════
 
     skb.add_template(SafetyRuleTemplate(
         name="child_near_hot",
@@ -557,7 +581,9 @@ def create_embodied_safety_kb() -> SafetyKnowledgeBase:
     return skb
 
 
+# ═══════════════════════════════════════════════════════════
 # Part 4: Safety Rule Parser (from text)
+# ═══════════════════════════════════════════════════════════
 
 class SafetyRuleParser:
     """

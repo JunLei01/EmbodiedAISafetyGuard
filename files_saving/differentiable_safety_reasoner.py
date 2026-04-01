@@ -65,7 +65,7 @@ from enum import Enum
 import time
 
 from knowledge_base import KnowledgeBase, Rule, Literal
-from safety_knowledge_base import (
+from files_saving.safety_knowledge_base import (
     SafetyKnowledgeBase,
     SafetyRuleTemplate,
     SafetyCategory,
@@ -288,10 +288,10 @@ class SafetyReasoningResult:
                 key=lambda r: (-r.severity.value, -r.prob_value),
             ):
                 sev_icon = {
-                    Severity.CRITICAL: "[CRIT]",
-                    Severity.HIGH:     "[HIGH]",
-                    Severity.MEDIUM:   "[MED ]",
-                    Severity.LOW:      "[LOW ]",
+                    Severity.CRITICAL: "🔴",
+                    Severity.HIGH:     "🟠",
+                    Severity.MEDIUM:   "🟡",
+                    Severity.LOW:      "🟢",
                 }[rule.severity]
                 lines.append(
                     f"  {sev_icon} [{rule.severity.name:8s}] "
@@ -854,7 +854,7 @@ class DifferentiableSafetyReasoner(nn.Module):
         
         Convenience method that combines SceneGraphBuilder + reasoning.
         """
-        from scene_graph_builder import SceneGraphBuilder
+        from files_saving.scene_graph_builder import SceneGraphBuilder
         builder = SceneGraphBuilder()
         grounded_facts, entity_ids = builder.build(predicate_text, device)
         return self.forward(grounded_facts, entity_ids)

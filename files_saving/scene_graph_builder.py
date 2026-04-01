@@ -164,7 +164,9 @@ class ParsedScene:
         return "\n".join(lines)
 
 
+# ═══════════════════════════════════════════════════════════
 # Part 2: Neural Predicate Parser
+# ═══════════════════════════════════════════════════════════
 
 class NeuralPredicateParser:
     """
