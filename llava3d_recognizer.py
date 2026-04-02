@@ -136,6 +136,11 @@ class LLaVA3DRecognizer:
             precision: "fp32", "bf16", or "fp16"
             device: Device to run on
         """
+        if device.startswith("cuda"):
+            import os 
+            os.environ["CUDA_VISIBLE_DEVICES"] = device.split(":")[0]  # Use only the first GPU
+            device = "cuda"
+
         if not LLAVA_AVAILABLE:
             raise RuntimeError("LLaVA-3D dependencies not available. "
                              "Make sure LLaVA-3D is cloned and dependencies are installed.")
