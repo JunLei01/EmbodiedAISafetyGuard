@@ -43,7 +43,7 @@ from typing import List, Dict, Set, Tuple, Optional
 from enum import Enum, auto
 
 # Import from existing knowledge_base module
-from knowledge_base import KnowledgeBase, Rule, Literal
+from utils.knowledge_base import KnowledgeBase, Rule, Literal
 
 
 # ═══════════════════════════════════════════════════════════

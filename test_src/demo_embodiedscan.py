@@ -21,9 +21,9 @@ Usage:
 
 import torch
 from scene_graph_builder import SceneGraphBuilder, SceneGraphVisualizer
-from differentiable_safety_reasoner import DifferentiableSafetyReasoner
+from utils.differentiable_safety_reasoner import DifferentiableSafetyReasoner
 from safety_knowledge_base import SafetyCategory
-from embodiedscan_adapter import EmbodiedScanAdapter
+from test_src.embodiedscan_adapter import EmbodiedScanAdapter
 
 
 def print_header(title: str):

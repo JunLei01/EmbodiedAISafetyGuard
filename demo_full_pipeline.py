@@ -15,11 +15,11 @@ from safety_knowledge_base import (
     Severity,
     create_embodied_safety_kb,
 )
-from differentiable_safety_reasoner import (
+from utils.differentiable_safety_reasoner import (
     DifferentiableSafetyReasoner,
     SafetyReasoningResult,
 )
-from knowledge_base import Rule, Literal
+from utils.knowledge_base import Rule, Literal
 
 
 def demo_kitchen_fire():

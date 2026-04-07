@@ -19,7 +19,7 @@ from typing import Optional, Tuple, List
 from pathlib import Path
 import json
 
-from embodiedscan_adapter import EmbodiedScanAdapter
+from test_src.embodiedscan_adapter import EmbodiedScanAdapter
 
 
 def run_safety_pipeline(
@@ -110,7 +110,7 @@ def run_safety_pipeline(
     if verbose:
         print("\n[4/5] Running differentiable safety reasoning...")
 
-    from differentiable_safety_reasoner import DifferentiableSafetyReasoner
+    from utils.differentiable_safety_reasoner import DifferentiableSafetyReasoner
     reasoner = DifferentiableSafetyReasoner(
         activation_threshold=0.3,
         learn_rule_weights=True,
@@ -322,7 +322,7 @@ def run_safety_pipeline_embodiedscan(
     if verbose:
         print("\n[5/6] Running differentiable safety reasoning...")
 
-    from differentiable_safety_reasoner import DifferentiableSafetyReasoner
+    from utils.differentiable_safety_reasoner import DifferentiableSafetyReasoner
     reasoner = DifferentiableSafetyReasoner(
         activation_threshold=activation_threshold,
         learn_rule_weights=True,
@@ -487,7 +487,7 @@ def demo_interactive():
         target = input("Target entity (optional): ").strip() or None
 
         # Check action
-        from differentiable_safety_reasoner import DifferentiableSafetyReasoner
+        from utils.differentiable_safety_reasoner import DifferentiableSafetyReasoner
         from scene_graph_builder import SceneGraphBuilder
 
         # Re-run with specific action

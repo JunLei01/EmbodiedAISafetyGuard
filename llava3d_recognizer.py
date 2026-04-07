@@ -16,6 +16,7 @@ from typing import Optional, List, Dict, Tuple
 from dataclasses import dataclass
 
 
+
 def add_llava_to_path():
     """Add LLaVA-3D to Python path if not already there."""
     llava_path = os.path.join(os.path.dirname(__file__), 'LLaVA-3D')
@@ -183,6 +184,14 @@ class LLaVA3DRecognizer:
             device=self.device
         )
         print("Model loaded successfully!")
+        if hasattr(self.model, 'device'):
+            target_device = self.model.device
+        else:
+            target_device = next(self.model.parameters()).device
+        self.model = self.model.to(target_device)
+        self.device = str(target_device)
+        # print("@@@@@@@@@@@Model", next(self.model.parameters()).device)
+
 
     def _prepare_prompt(self, query: str, clicks: Optional[List[float]] = None) -> Tuple[str, torch.Tensor]:
         """Prepare prompt for LLaVA."""
@@ -260,7 +269,11 @@ class LLaVA3DRecognizer:
             .unsqueeze(0)
             .cuda()
         )
-
+        # print("@@@@@@@@@@", input_ids.device)
+        # print("@@@@@@@@@@@@@@", next(self.model.parameters()).device)
+        # print( "@@@@@@@@@@@@@@@@@", images_tensor.device)
+        # for name , param in self.model.named_parameters():
+        #     print("##", name, param.device)
         # Generate
         with torch.inference_mode():
             output_ids = self.model.generate(

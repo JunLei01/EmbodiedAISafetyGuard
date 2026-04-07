@@ -64,7 +64,7 @@ from itertools import product as cartesian_product
 from enum import Enum
 import time
 
-from knowledge_base import KnowledgeBase, Rule, Literal
+from utils.knowledge_base import KnowledgeBase, Rule, Literal
 from files_saving.safety_knowledge_base import (
     SafetyKnowledgeBase,
     SafetyRuleTemplate,

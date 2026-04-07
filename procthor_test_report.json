@@ -1,0 +1,233 @@
+{
+  "summary": {
+    "total_scenes": 10,
+    "successful_scenes": 0,
+    "failed_scenes": 10,
+    "room_type_breakdown": {},
+    "avg_objects_per_scene": 0.0,
+    "avg_activated_rules": 0.0,
+    "avg_hazard_objects": 0.0,
+    "avg_grounded_facts": 0.0,
+    "avg_spatial_relations": 0.0,
+    "hazard_type_counts": {},
+    "total_action_tests": 0,
+    "successful_interceptions": 0,
+    "missed_interceptions": 0,
+    "false_positives": 0
+  },
+  "results": [
+    {
+      "scene_id": "scene_0",
+      "room_type": "error",
+      "num_objects": 0,
+      "hazard_objects": 0,
+      "activated_rules": 0,
+      "critical_rules": 0,
+      "high_rules": 0,
+      "medium_rules": 0,
+      "low_rules": 0,
+      "is_safe": false,
+      "violations_found": 0,
+      "test_duration_ms": 15.908002853393555,
+      "grounded_facts_count": 0,
+      "spatial_relations_count": 0,
+      "error": "'SafetyReasoningResult' object has no attribute 'total_activated'"
+    },
+    {
+      "scene_id": "scene_1",
+      "room_type": "error",
+      "num_objects": 0,
+      "hazard_objects": 0,
+      "activated_rules": 0,
+      "critical_rules": 0,
+      "high_rules": 0,
+      "medium_rules": 0,
+      "low_rules": 0,
+      "is_safe": false,
+      "violations_found": 0,
+      "test_duration_ms": 490.5087947845459,
+      "grounded_facts_count": 0,
+      "spatial_relations_count": 0,
+      "error": "'SafetyReasoningResult' object has no attribute 'total_activated'"
+    },
+    {
+      "scene_id": "scene_2",
+      "room_type": "error",
+      "num_objects": 0,
+      "hazard_objects": 0,
+      "activated_rules": 0,
+      "critical_rules": 0,
+      "high_rules": 0,
+      "medium_rules": 0,
+      "low_rules": 0,
+      "is_safe": false,
+      "violations_found": 0,
+      "test_duration_ms": 4.864692687988281,
+      "grounded_facts_count": 0,
+      "spatial_relations_count": 0,
+      "error": "'SafetyReasoningResult' object has no attribute 'total_activated'"
+    },
+    {
+      "scene_id": "scene_3",
+      "room_type": "error",
+      "num_objects": 0,
+      "hazard_objects": 0,
+      "activated_rules": 0,
+      "critical_rules": 0,
+      "high_rules": 0,
+      "medium_rules": 0,
+      "low_rules": 0,
+      "is_safe": false,
+      "violations_found": 0,
+      "test_duration_ms": 184.34453010559082,
+      "grounded_facts_count": 0,
+      "spatial_relations_count": 0,
+      "error": "'SafetyReasoningResult' object has no attribute 'total_activated'"
+    },
+    {
+      "scene_id": "scene_4",
+      "room_type": "error",
+      "num_objects": 0,
+      "hazard_objects": 0,
+      "activated_rules": 0,
+      "critical_rules": 0,
+      "high_rules": 0,
+      "medium_rules": 0,
+      "low_rules": 0,
+      "is_safe": false,
+      "violations_found": 0,
+      "test_duration_ms": 112.00189590454102,
+      "grounded_facts_count": 0,
+      "spatial_relations_count": 0,
+      "error": "'SafetyReasoningResult' object has no attribute 'total_activated'"
+    },
+    {
+      "scene_id": "scene_5",
+      "room_type": "error",
+      "num_objects": 0,
+      "hazard_objects": 0,
+      "activated_rules": 0,
+      "critical_rules": 0,
+      "high_rules": 0,
+      "medium_rules": 0,
+      "low_rules": 0,
+      "is_safe": false,
+      "violations_found": 0,
+      "test_duration_ms": 37.03474998474121,
+      "grounded_facts_count": 0,
+      "spatial_relations_count": 0,
+      "error": "'SafetyReasoningResult' object has no attribute 'total_activated'"
+    },
+    {
+      "scene_id": "scene_6",
+      "room_type": "error",
+      "num_objects": 0,
+      "hazard_objects": 0,
+      "activated_rules": 0,
+      "critical_rules": 0,
+      "high_rules": 0,
+      "medium_rules": 0,
+      "low_rules": 0,
+      "is_safe": false,
+      "violations_found": 0,
+      "test_duration_ms": 20.421504974365234,
+      "grounded_facts_count": 0,
+      "spatial_relations_count": 0,
+      "error": "'SafetyReasoningResult' object has no attribute 'total_activated'"
+    },
+    {
+      "scene_id": "scene_7",
+      "room_type": "error",
+      "num_objects": 0,
+      "hazard_objects": 0,
+      "activated_rules": 0,
+      "critical_rules": 0,
+      "high_rules": 0,
+      "medium_rules": 0,
+      "low_rules": 0,
+      "is_safe": false,
+      "violations_found": 0,
+      "test_duration_ms": 64.64934349060059,
+      "grounded_facts_count": 0,
+      "spatial_relations_count": 0,
+      "error": "'SafetyReasoningResult' object has no attribute 'total_activated'"
+    },
+    {
+      "scene_id": "scene_8",
+      "room_type": "error",
+      "num_objects": 0,
+      "hazard_objects": 0,
+      "activated_rules": 0,
+      "critical_rules": 0,
+      "high_rules": 0,
+      "medium_rules": 0,
+      "low_rules": 0,
+      "is_safe": false,
+      "violations_found": 0,
+      "test_duration_ms": 1555.964708328247,
+      "grounded_facts_count": 0,
+      "spatial_relations_count": 0,
+      "error": "'SafetyReasoningResult' object has no attribute 'total_activated'"
+    },
+    {
+      "scene_id": "scene_9",
+      "room_type": "error",
+      "num_objects": 0,
+      "hazard_objects": 0,
+      "activated_rules": 0,
+      "critical_rules": 0,
+      "high_rules": 0,
+      "medium_rules": 0,
+      "low_rules": 0,
+      "is_safe": false,
+      "violations_found": 0,
+      "test_duration_ms": 26.979923248291016,
+      "grounded_facts_count": 0,
+      "spatial_relations_count": 0,
+      "error": "'SafetyReasoningResult' object has no attribute 'total_activated'"
+    }
+  ],
+  "action_results": [],
+  "errors": [
+    [
+      "scene_0",
+      "'SafetyReasoningResult' object has no attribute 'total_activated'\nTraceback (most recent call last):\n  File \"/data/junlei/NPG/test_src/test_procthor_pipeline.py\", line 315, in test_basic_pipeline\n    pipeline_info, safety_result = run_neuro_symbolic_pipeline(scene, verbose=verbose)\n  File \"/data/junlei/NPG/test_src/test_procthor_pipeline.py\", line 256, in run_neuro_symbolic_pipeline\n    print(f\"    - Total activated rules: {result.total_activated}\")\nAttributeError: 'SafetyReasoningResult' object has no attribute 'total_activated'\n"
+    ],
+    [
+      "scene_1",
+      "'SafetyReasoningResult' object has no attribute 'total_activated'\nTraceback (most recent call last):\n  File \"/data/junlei/NPG/test_src/test_procthor_pipeline.py\", line 315, in test_basic_pipeline\n    pipeline_info, safety_result = run_neuro_symbolic_pipeline(scene, verbose=verbose)\n  File \"/data/junlei/NPG/test_src/test_procthor_pipeline.py\", line 256, in run_neuro_symbolic_pipeline\n    print(f\"    - Total activated rules: {result.total_activated}\")\nAttributeError: 'SafetyReasoningResult' object has no attribute 'total_activated'\n"
+    ],
+    [
+      "scene_2",
+      "'SafetyReasoningResult' object has no attribute 'total_activated'\nTraceback (most recent call last):\n  File \"/data/junlei/NPG/test_src/test_procthor_pipeline.py\", line 315, in test_basic_pipeline\n    pipeline_info, safety_result = run_neuro_symbolic_pipeline(scene, verbose=verbose)\n  File \"/data/junlei/NPG/test_src/test_procthor_pipeline.py\", line 256, in run_neuro_symbolic_pipeline\n    print(f\"    - Total activated rules: {result.total_activated}\")\nAttributeError: 'SafetyReasoningResult' object has no attribute 'total_activated'\n"
+    ],
+    [
+      "scene_3",
+      "'SafetyReasoningResult' object has no attribute 'total_activated'\nTraceback (most recent call last):\n  File \"/data/junlei/NPG/test_src/test_procthor_pipeline.py\", line 315, in test_basic_pipeline\n    pipeline_info, safety_result = run_neuro_symbolic_pipeline(scene, verbose=verbose)\n  File \"/data/junlei/NPG/test_src/test_procthor_pipeline.py\", line 256, in run_neuro_symbolic_pipeline\n    print(f\"    - Total activated rules: {result.total_activated}\")\nAttributeError: 'SafetyReasoningResult' object has no attribute 'total_activated'\n"
+    ],
+    [
+      "scene_4",
+      "'SafetyReasoningResult' object has no attribute 'total_activated'\nTraceback (most recent call last):\n  File \"/data/junlei/NPG/test_src/test_procthor_pipeline.py\", line 315, in test_basic_pipeline\n    pipeline_info, safety_result = run_neuro_symbolic_pipeline(scene, verbose=verbose)\n  File \"/data/junlei/NPG/test_src/test_procthor_pipeline.py\", line 256, in run_neuro_symbolic_pipeline\n    print(f\"    - Total activated rules: {result.total_activated}\")\nAttributeError: 'SafetyReasoningResult' object has no attribute 'total_activated'\n"
+    ],
+    [
+      "scene_5",
+      "'SafetyReasoningResult' object has no attribute 'total_activated'\nTraceback (most recent call last):\n  File \"/data/junlei/NPG/test_src/test_procthor_pipeline.py\", line 315, in test_basic_pipeline\n    pipeline_info, safety_result = run_neuro_symbolic_pipeline(scene, verbose=verbose)\n  File \"/data/junlei/NPG/test_src/test_procthor_pipeline.py\", line 256, in run_neuro_symbolic_pipeline\n    print(f\"    - Total activated rules: {result.total_activated}\")\nAttributeError: 'SafetyReasoningResult' object has no attribute 'total_activated'\n"
+    ],
+    [
+      "scene_6",
+      "'SafetyReasoningResult' object has no attribute 'total_activated'\nTraceback (most recent call last):\n  File \"/data/junlei/NPG/test_src/test_procthor_pipeline.py\", line 315, in test_basic_pipeline\n    pipeline_info, safety_result = run_neuro_symbolic_pipeline(scene, verbose=verbose)\n  File \"/data/junlei/NPG/test_src/test_procthor_pipeline.py\", line 256, in run_neuro_symbolic_pipeline\n    print(f\"    - Total activated rules: {result.total_activated}\")\nAttributeError: 'SafetyReasoningResult' object has no attribute 'total_activated'\n"
+    ],
+    [
+      "scene_7",
+      "'SafetyReasoningResult' object has no attribute 'total_activated'\nTraceback (most recent call last):\n  File \"/data/junlei/NPG/test_src/test_procthor_pipeline.py\", line 315, in test_basic_pipeline\n    pipeline_info, safety_result = run_neuro_symbolic_pipeline(scene, verbose=verbose)\n  File \"/data/junlei/NPG/test_src/test_procthor_pipeline.py\", line 256, in run_neuro_symbolic_pipeline\n    print(f\"    - Total activated rules: {result.total_activated}\")\nAttributeError: 'SafetyReasoningResult' object has no attribute 'total_activated'\n"
+    ],
+    [
+      "scene_8",
+      "'SafetyReasoningResult' object has no attribute 'total_activated'\nTraceback (most recent call last):\n  File \"/data/junlei/NPG/test_src/test_procthor_pipeline.py\", line 315, in test_basic_pipeline\n    pipeline_info, safety_result = run_neuro_symbolic_pipeline(scene, verbose=verbose)\n  File \"/data/junlei/NPG/test_src/test_procthor_pipeline.py\", line 256, in run_neuro_symbolic_pipeline\n    print(f\"    - Total activated rules: {result.total_activated}\")\nAttributeError: 'SafetyReasoningResult' object has no attribute 'total_activated'\n"
+    ],
+    [
+      "scene_9",
+      "'SafetyReasoningResult' object has no attribute 'total_activated'\nTraceback (most recent call last):\n  File \"/data/junlei/NPG/test_src/test_procthor_pipeline.py\", line 315, in test_basic_pipeline\n    pipeline_info, safety_result = run_neuro_symbolic_pipeline(scene, verbose=verbose)\n  File \"/data/junlei/NPG/test_src/test_procthor_pipeline.py\", line 256, in run_neuro_symbolic_pipeline\n    print(f\"    - Total activated rules: {result.total_activated}\")\nAttributeError: 'SafetyReasoningResult' object has no attribute 'total_activated'\n"
+    ]
+  ]
+}

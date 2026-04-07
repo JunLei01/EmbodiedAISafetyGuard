@@ -14,13 +14,13 @@ def test_imports():
     """Test that all modules can be imported."""
     print("Testing imports...")
     try:
-        from knowledge_base import KnowledgeBase, Rule, Literal, create_risk_kb
+        from utils.knowledge_base import KnowledgeBase, Rule, Literal, create_risk_kb
         from safety_knowledge_base import SafetyKnowledgeBase, SafetyRuleTemplate, create_embodied_safety_kb
         from neural_predicates import NeuralPredicateLayer, create_risk_predicate_layer
         from logic_layer import DifferentiableLogicLayer, ProofTracer
         from loss import NeuroSymbolicLoss
         from scene_graph_builder import SceneGraphBuilder, NeuralPredicateParser
-        from differentiable_safety_reasoner import DifferentiableSafetyReasoner
+        from utils.differentiable_safety_reasoner import DifferentiableSafetyReasoner
         from pipeline import NeuroSymbolicRiskReasoner, PipelineConfig
         print("  [OK] All imports successful")
         return True
@@ -33,7 +33,7 @@ def test_knowledge_base():
     """Test knowledge base creation."""
     print("\nTesting knowledge base...")
     try:
-        from knowledge_base import create_risk_kb
+        from utils.knowledge_base import create_risk_kb
         from safety_knowledge_base import create_embodied_safety_kb
 
         kb = create_risk_kb()
@@ -87,7 +87,7 @@ def test_logic_layer():
     """Test differentiable logic layer."""
     print("\nTesting logic layer...")
     try:
-        from knowledge_base import create_risk_kb
+        from utils.knowledge_base import create_risk_kb
         from logic_layer import DifferentiableLogicLayer
 
         kb = create_risk_kb()
@@ -153,7 +153,7 @@ def test_safety_reasoner():
     print("\nTesting safety reasoner...")
     try:
         from scene_graph_builder import SceneGraphBuilder
-        from differentiable_safety_reasoner import DifferentiableSafetyReasoner
+        from utils.differentiable_safety_reasoner import DifferentiableSafetyReasoner
 
         # Build scene
         predicates = """
@@ -193,7 +193,7 @@ def test_action_violation_checking():
     print("\nTesting action violation checking...")
     try:
         from scene_graph_builder import SceneGraphBuilder
-        from differentiable_safety_reasoner import DifferentiableSafetyReasoner
+        from utils.differentiable_safety_reasoner import DifferentiableSafetyReasoner
         from safety_knowledge_base import SafetyCategory
 
         predicates = """
@@ -235,7 +235,7 @@ def test_gradient_flow():
     print("\nTesting gradient flow...")
     try:
         from scene_graph_builder import SceneGraphBuilder
-        from differentiable_safety_reasoner import DifferentiableSafetyReasoner
+        from utils.differentiable_safety_reasoner import DifferentiableSafetyReasoner
 
         predicates = """
         object(gas, gasoline_can, flammable).

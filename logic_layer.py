@@ -22,7 +22,7 @@ import torch.nn as nn
 from typing import Dict, List, Optional, Set, Tuple
 from dataclasses import dataclass
 
-from knowledge_base import KnowledgeBase, Rule, Literal
+from utils.knowledge_base import KnowledgeBase, Rule, Literal
 
 
 class DifferentiableLogicLayer(nn.Module):

@@ -16,7 +16,7 @@ from typing import Dict, List, Optional, Tuple
 
 from files_saving.scene_graph import SceneGraph, SceneFeatureEncoder
 from neural_predicates import NeuralPredicateLayer, create_risk_predicate_layer
-from knowledge_base import KnowledgeBase, create_risk_kb
+from utils.knowledge_base import KnowledgeBase, create_risk_kb
 from logic_layer import DifferentiableLogicLayer, ProofTracer
 from loss import NeuroSymbolicLoss
 
