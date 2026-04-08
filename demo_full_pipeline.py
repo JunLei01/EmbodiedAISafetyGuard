@@ -7,8 +7,8 @@ Demonstrates the complete pipeline:
 """
 
 import torch
-from scene_graph_builder import SceneGraphBuilder
-from safety_knowledge_base import (
+from utils.scene_graph_builder import SceneGraphBuilder
+from utils.safety_knowledge_base import (
     SafetyKnowledgeBase,
     SafetyRuleTemplate,
     SafetyCategory,
