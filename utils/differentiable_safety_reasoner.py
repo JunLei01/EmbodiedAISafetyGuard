@@ -56,6 +56,8 @@ Key properties:
     4. SCALABLE:       Pruning strategies avoid combinatorial explosion
 """
 
+import os
+
 import torch
 import torch.nn as nn
 from typing import Dict, List, Set, Tuple, Optional, Any
@@ -72,6 +74,7 @@ from utils.safety_knowledge_base import (
     Severity,
     create_embodied_safety_kb,
 )
+from utils.llm_safety_adapter import LLMSafetyAdapter, MiniMaxLLMClient
 
 
 # Part 1: Activated Safety Rule (Output Data Structure)
@@ -770,6 +773,11 @@ class DifferentiableSafetyReasoner(nn.Module):
         activation_threshold: float = 0.3,
         learn_rule_weights: bool = True,
         pruning_threshold: float = 0.01,
+
+        enable_llm: bool = True,
+        llm_api_key: Optional[str] = None,
+        llm_threshold: float = 0.5,
+        llm_min_rules: int = 3,  # 当规则数低于此值时触发 LLM
     ):
         super().__init__()
 
@@ -792,25 +800,55 @@ class DifferentiableSafetyReasoner(nn.Module):
         # Store threshold for external access
         self.activation_threshold = activation_threshold
 
+        # LLM Safety Adapter (可选)
+        self.llm_adapter: Optional[LLMSafetyAdapter] = None
+        self.llm_min_rules = llm_min_rules
+
+        if enable_llm:
+            try:
+                # 检查是否有本地模型
+                local_model_path = "/data/junlei/NPG/models/gpt-oss-20b"
+                use_local = os.path.exists(local_model_path)
+
+                if use_local:
+                    print(f"  Using local model: {local_model_path}")
+                    llm_client = MiniMaxLLMClient(
+                        use_local=True,
+                        local_model_path=local_model_path,
+                    )
+                else:
+                    print("  Using LLM API")
+                    llm_client = MiniMaxLLMClient(api_key=llm_api_key)
+
+                self.llm_adapter = LLMSafetyAdapter(
+                    llm_client=llm_client,
+                    enable_llm=True,
+                    llm_threshold=llm_threshold,
+                )
+                print("  LLM Enhancement mode enabled   ")
+            except Exception as e:
+                print(f"  Warning: Failed to initialize LLM adapter: {e}")
+                print("  Will continue using traditional reasoning mode")
+
     def forward(
         self,
         grounded_facts: Dict[str, torch.Tensor],
         entity_ids: List[str],
-    ) -> SafetyReasoningResult:
+        scene_name: Optional[str] = None,  
+    ) -> "SafetyReasoningResult":
         """
         Core forward pass: grounded scene facts → activated safety rules.
-        
-        This is the differentiable inference path.
-        Gradients flow from activated rule probabilities
-        back to grounded fact probabilities.
-        
+
+        支持 LLM 增强：当传统规则激活不足时，使用 LLM 补充生成规则。
+
         Args:
             grounded_facts: Output of SceneGraphBuilder.build()
                 {"near(1,2)": tensor(0.92), "flammable(1)": tensor(0.95), ...}
             entity_ids: ["1", "2", "3", ...]
-            
+            scene_name: 场景名称（用于 LLM 分析）
+
         Returns:
-            SafetyReasoningResult with all activated rules
+            SafetyReasoningResult with all activated rules (symbolic + LLM)
         """
         t0 = time.time()
 
@@ -820,11 +858,24 @@ class DifferentiableSafetyReasoner(nn.Module):
             entities=entity_ids,
         )
 
-        # Step 2: Extract activated safety rules
+        # Step 2: Extract activated safety rules (symbolic reasoning)
         activated = self.activator.extract_activated_rules(
             all_fact_probs=all_derived,
             entity_ids=entity_ids,
         )
+
+        # Step 3: LLM 增强（如果启用且规则不足）
+        if self.llm_adapter and len(activated) < self.llm_min_rules:
+            llm_rules = self.llm_adapter.generate_rules(
+                entity_ids=entity_ids,
+                grounded_facts=grounded_facts,
+                activated_rules=activated,
+                scene_name=scene_name,
+            )
+            # 合并 LLM 生成的规则
+            activated.extend(llm_rules)
+            # 按严重程度和概率重新排序
+            activated.sort(key=lambda r: (-r.severity.value, -r.prob_value))
 
         elapsed_ms = (time.time() - t0) * 1000
 
@@ -840,24 +891,26 @@ class DifferentiableSafetyReasoner(nn.Module):
         self,
         grounded_facts: Dict[str, torch.Tensor],
         entity_ids: List[str],
+        scene_name: Optional[str] = None,
     ) -> SafetyReasoningResult:
         """Alias for forward() for clearer API."""
-        return self.forward(grounded_facts, entity_ids)
+        return self.forward(grounded_facts, entity_ids, scene_name)
 
     def reason_from_predicates(
         self,
         predicate_text: str,
+        scene_name: Optional[str] = None,
         device: torch.device = torch.device("cpu"),
     ) -> SafetyReasoningResult:
         """
         Full pipeline: raw predicate text → activated safety rules.
-        
+
         Convenience method that combines SceneGraphBuilder + reasoning.
         """
-        from scene_graph_builder import SceneGraphBuilder
+        from utils.scene_graph_builder import SceneGraphBuilder
         builder = SceneGraphBuilder()
         grounded_facts, entity_ids = builder.build(predicate_text, device)
-        return self.forward(grounded_facts, entity_ids)
+        return self.forward(grounded_facts, entity_ids, scene_name)
 
     # ─── Action Violation Checking Interface ───
 
