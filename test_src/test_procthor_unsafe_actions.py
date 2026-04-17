@@ -24,8 +24,11 @@ from collections import defaultdict
 import time
 import os
 
+import torch
+
 # 可微逻辑推理器相关
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from utils.llm_safety_adapter import LLMSafetyAdapter, MiniMaxLLMClient
 from utils.scene_graph_builder import SceneGraphBuilder
 from utils.differentiable_safety_reasoner import DifferentiableSafetyReasoner
 from utils.safety_knowledge_base import (
@@ -49,33 +52,34 @@ from utils.safety_knowledge_base import (
 #     return controller
 # ================ AI2-THOR 场景加载 ================
 
-def get_ai2thor_controller(scene_name: str = None, use_x11: bool = True, **kwargs):
-    """初始化并返回 AI2-THOR Controller（支持 X11 转发）"""
+def get_ai2thor_controller(scene_name: str = None, headless: bool = False, **kwargs):
     try:
         from ai2thor.controller import Controller
+        from ai2thor.platform import CloudRendering
     except ImportError:
-        raise RuntimeError(
-            "AI2-THOR 未安装。请运行: pip install ai2thor"
-        )
+        print("Error: ai2thor not installed. Run: pip install ai2thor")
+        return None
 
-    # 配置参数 - 使用默认平台（需要 X11）
     default_kwargs = {
-        'width': 640,
-        'height': 480,
+        'width': 300,
+        'height': 300,
         'renderDepthImage': False,
         'renderInstanceSegmentation': False,
         'renderSemanticSegmentation': False,
         'renderNormalsImage': False,
     }
 
-    # 检查 DISPLAY 环境变量
-    display = os.environ.get('DISPLAY')
-    if not display:
-        raise RuntimeError(
-            "DISPLAY 环境变量未设置。\n"
-            "请使用 ssh -X 连接服务器，或运行: export DISPLAY=:0"
-        )
-    print(f"  检测到 DISPLAY={display}")
+    if headless:
+        try:
+            import ai2thor.platform as platform_module
+
+            if hasattr(platform_module, 'CloudRendering'):
+                default_kwargs['platform'] = CloudRendering
+                print("  Using CloudRendering for headless mode")
+            else:
+                print("  Warning: CloudRendering is not available")
+        except Exception as e:
+            print(f"  Warning: Failed to configure CloudRendering: {e}")
 
     default_kwargs.update(kwargs)
 
@@ -86,7 +90,16 @@ def get_ai2thor_controller(scene_name: str = None, use_x11: bool = True, **kwarg
         controller = Controller(**default_kwargs)
         return controller
     except Exception as e:
-        raise RuntimeError(f"创建 AI2-THOR Controller 失败: {e}")
+        print(f"  Building AI2-THOR Controller failed: {e}")
+        if headless and 'platform' in default_kwargs:
+            print("  Trying to fall back to default platform...")
+            del default_kwargs['platform']
+            try:
+                controller = Controller(**default_kwargs)
+                return controller
+            except Exception as e2:
+                print(f"  Fall back also failed: {e2}")
+        return None
 
 
 def get_scene_objects(controller=None, scene_name: str = None) -> List[Dict]:
@@ -98,11 +111,11 @@ def get_scene_objects(controller=None, scene_name: str = None) -> List[Dict]:
     """
     if controller is None:
         if scene_name is None:
-            raise ValueError("必须提供 controller 或 scene_name")
+            raise ValueError("Must provide controller or scene_name")
         try:
             controller = get_ai2thor_controller(scene_name)
         except Exception as e:
-            print(f"  创建 AI2-THOR controller 失败: {e}")
+            print(f"  Building AI2-THOR controller failed: {e}")
             return []
 
     if controller is None:
@@ -344,10 +357,10 @@ def ai2thor_objects_to_predicates(objects: List[Dict]) -> str:
             predicates.append(f"pickupable({obj_id}).")
 
         # 8. receptacle_of 谓词 (容器关系)
-        for parent in props['parent_receptacles']:
-            parent_id = parent.split('|')[0] if '|' in parent else parent
-            predicates.append(f"receptacle_of({obj_id}, {parent_id}).")
-            predicates.append(f"inside({obj_id}, {parent_id}).")
+        # for parent in props['parent_receptacles']:
+        #     parent_id = parent.split('|')[0] if '|' in parent else parent
+        #     predicates.append(f"receptacle_of({obj_id}, {parent_id}).")
+        #     predicates.append(f"inside({obj_id}, {parent_id}).")
 
     return '\n'.join(predicates)
 
@@ -483,47 +496,60 @@ class TestReport:
         }
 
 
-# ================ 主测试流程 ================
-
 class AI2ThorSafetyTester:
     """AI2-THOR 场景安全测试器"""
-
-    def __init__(self, controller=None, activation_threshold: float = 0.3):
+    def __init__(
+        self,
+        controller=None,
+        activation_threshold: float = 0.3,
+        enable_llm_action_check: bool = True,
+        local_model_path: str = "/models/gpt-oss-20b",
+        llm_device: str = "cuda" if torch.cuda.is_available() else "cpu",
+    ):
         self.controller = controller
         self.scene_graph_builder = SceneGraphBuilder()
         self.knowledge_base = create_embodied_safety_kb()
         self.activation_threshold = activation_threshold
+
+        # 3. 初始化安全推理器
         self.reasoner = DifferentiableSafetyReasoner(
-            activation_threshold=activation_threshold,
+            activation_threshold=self.activation_threshold,
             learn_rule_weights=True,
+            enable_llm=True,  
         )
         self.scenes_cache: Dict[str, str] = {}  # scene_name -> predicates cache
 
+        # LLM configuration
+        llm_client = None
+        if enable_llm_action_check:
+            try:
+                llm_client = MiniMaxLLMClient(
+                    use_local=True,
+                    local_model_path=local_model_path,
+                    device=llm_device,
+                )
+            except Exception as e:
+                print(f"  警告: 无法初始化 LLM 客户端: {e}")
+        self.llm_adapter = LLMSafetyAdapter(
+            llm_client=llm_client,
+            enable_llm=enable_llm_action_check and llm_client is not None,
+        )
+
     def _get_or_load_scene_predicates(self, scene_name: str) -> str:
         """获取或加载场景谓词（带缓存）"""
-        if scene_name in self.scenes_cache:
+        if scene_name in self.scenes_cache: 
             return self.scenes_cache[scene_name]
 
-        # 尝试加载真实场景
+        # 尝试加载场景
+        # try:
         objects = get_scene_objects(self.controller, scene_name)
-
-        if objects:
-            # 成功获取真实场景数据
-            predicates = ai2thor_objects_to_predicates(objects)
-            print(f"  使用 AI2-THOR 真实场景数据: {len(objects)} 个对象")
-        else:
-            # 无真实数据 - 拒绝使用模拟数据
-            raise RuntimeError(
-                f"无法加载场景 {scene_name} 的真实数据。\n"
-                f"请确保：\n"
-                f"1. AI2-THOR 已安装: pip install ai2thor\n"
-                f"2. SSH 使用 X11 转发连接: ssh -X your_server\n"
-                f"3. 设置 DISPLAY 环境变量: export DISPLAY=:0\n"
-                f"4. 本地机器安装了 X Server (如 Xming/VcXsrv)"
-            )
-
+        predicates = ai2thor_objects_to_predicates(objects)
         self.scenes_cache[scene_name] = predicates
         return predicates
+        # except Exception as e:
+        #     # 场景加载失败，使用模拟数据
+        #     print(f"  Warning: 无法加载场景 {scene_name}: {e}")
+            # return self._create_mock_predicates(scene_name)
 
     def _create_mock_predicates(self, scene_name: str) -> str:
         """为无法加载的场景创建模拟谓词（基于常见对象类型）"""
@@ -630,14 +656,14 @@ class AI2ThorSafetyTester:
 
     def test_action(self, action_data: Dict, action_id: int) -> ActionSafetyResult:
         """
-        测试单个行为的安全性
+        Test the safety of a single action
 
-        流程:
-        1. 加载对应场景
-        2. 构建场景谓词
-        3. 解析行为步骤
-        4. 对每个步骤进行安全推理
-        5. 汇总结果
+        Porcess:
+        1. Load the corresponding scene
+        2. Build scene predicates
+        3. Parse action steps
+        4. Perform safety reasoning for each step
+        5. Summarize results
         """
         start_time = time.time()
 
@@ -656,6 +682,38 @@ class AI2ThorSafetyTester:
             risk_category=risk_category,
         )
 
+
+        # Step 1: Judge if the action is inherently unsafe based on the first step
+        first_step_parsed = None
+        for step in steps:
+            parsed = parse_action_step(step)
+            if parsed:
+                first_step_parsed = parsed
+                break
+
+        if first_step_parsed:
+            action_verb, target_obj = first_step_parsed
+            is_action_safe, unsafe_reason = self.llm_adapter.check_action_inherently_unsafe(
+                action_verb, target_obj, instruction
+            )
+
+            if not is_action_safe:
+                result.is_safe = False
+                result.safety_score = 0.0
+                result.processing_time = time.time() - start_time
+                result.error = f"unsafe action: {unsafe_reason or action_verb}"
+                result.blocked_steps = [(
+                    0,
+                    steps[0] if steps else action_verb,
+                    action_verb,
+                    f"llm_action_inherently_unsafe"
+                )]
+                result.violations = [{
+                    'step_idx': 0,
+                    'step': steps[0] if steps else action_verb,
+                    'rule': f"llm_action_inherently_unsafe: {unsafe_reason or 'unsafe action'}"
+                }]
+                return result
         
         # 1. 获取场景谓词
         predicates = self._get_or_load_scene_predicates(scene_name)
@@ -681,7 +739,7 @@ class AI2ThorSafetyTester:
                 })
         result.activated_rules = activated_rules
 
-        # 4. 解析行为步骤并检查安全
+        # 解析行为步骤并检查安全
         blocked_steps = []
         total_steps = len(steps)
 
@@ -716,7 +774,6 @@ class AI2ThorSafetyTester:
         # 5. 计算安全分数
         if blocked_steps:
             result.is_safe = False
-            # 安全分数 = 1 - (阻断步骤数 / 总步骤数)
             result.safety_score = max(0.0, 1.0 - len(blocked_steps) / max(total_steps, 1))
         else:
             result.is_safe = True
@@ -728,7 +785,6 @@ class AI2ThorSafetyTester:
             # result.error = str(e)
             # result.is_safe = False
             # result.processing_time = time.time() - start_time
-
         return result
 
     def run_full_test(self, jsonl_path: str, max_actions: int = None) -> TestReport:
@@ -765,8 +821,6 @@ class AI2ThorSafetyTester:
         for i, action_data in enumerate(actions):
             action_id = i + 1
             print(f"\n[{action_id}/{len(actions)}] 测试行为: {action_data.get('instruction', 'N/A')[:60]}...")
-            print(f"  场景: {action_data.get('scene_name', 'N/A')}")
-            print(f"  风险类别: {action_data.get('risk_category', 'N/A')}")
 
             result = self.test_action(action_data, action_id)
             report.results.append(result)
@@ -841,6 +895,24 @@ def main():
         default=0.3,
         help='安全规则激活阈值（默认 0.3）'
     )
+    parser.add_argument(
+        '--enable-llm-action-check',
+        action='store_true',
+        default=True,
+        help='启用 LLM 动作安全性前置检查（默认启用）'
+    )
+    parser.add_argument(
+        '--disable-llm-action-check',
+        action='store_true',
+        help='禁用 LLM 动作安全性前置检查'
+    )
+    parser.add_argument(
+        '--llm-model-path',
+        type=str,
+        default='models/gpt-oss-20b',
+        help='本地 LLM 模型路径（默认: models/gpt-oss-20b）'
+    )
+
 
     args = parser.parse_args()
 
@@ -851,43 +923,30 @@ def main():
     # 初始化 AI2-THOR 控制器（可选）
     controller = None
     if not args.mock_only:
-        print("\n初始化 AI2-THOR 控制器...")
+        print("\nInitializing AI2-THOR controller...")
         try:
             controller = get_ai2thor_controller(headless=True)
             if controller:
-                print("  AI2-THOR 已连接 (无头模式)")
+                print("  AI2-THOR Connected (Headless Mode)")
             else:
-                raise RuntimeError("无法创建 controller")
+                raise RuntimeError("Cannot create controller")
         except Exception as e:
-            print(f"  警告: 无法连接 AI2-THOR: {e}")
-            print("  将使用模拟场景数据")
+            print(f"  Warning: Cannot connect to AI2-THOR: {e}")
+            print("  Will use mock scene data")
             controller = None
 
-    # 创建测试器
+    enable_llm = args.enable_llm_action_check and not args.disable_llm_action_check
+
     tester = AI2ThorSafetyTester(
         controller=controller,
-        activation_threshold=args.threshold
+        activation_threshold=args.threshold,
+        enable_llm_action_check=enable_llm,
+        local_model_path=args.llm_model_path,
     )
 
-    # 运行测试
-    print(f"\n开始测试...")
+    print(f"\nStarting test...")
     report = tester.run_full_test(args.data_path, args.max_actions)
 
-    # 打印总结
-    # report.print_summary()
-
-    # 保存结果
-    # import json as json_module
-    # with open(args.output, 'w', encoding='utf-8') as f:
-    #     json_module.dump(report.to_dict(), f, indent=2, ensure_ascii=False)
-    # print(f"\n详细结果已保存到: {args.output}")
-
-    # # 关闭控制器
-    # if controller:
-    #     try:
-    #         controller.stop()
-    #     except:
-    #         pass
 
 
 if __name__ == '__main__':

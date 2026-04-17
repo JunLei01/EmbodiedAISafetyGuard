@@ -96,7 +96,7 @@ class MiniMaxLLMClient:
         temperature: float = 0.3,
         max_tokens: int = 1000000,
         # 本地模式参数
-        use_local: bool = False,
+        use_local: bool = True,
         local_model_path: str = "/models/gpt-oss-20b",
         device: str = "cuda",
     ):
@@ -270,14 +270,14 @@ class MiniMaxLLMClient:
 
 # Focus on hazards involving unusual entity combinations. Only output valid JSON."""
 
-    def _call_llm(self, prompt: str) -> str:
+    def _call_llm(self, prompt: str, action: str = None) -> str:
         """调用 LLM（API 或本地模式）"""
         if self.use_local:
-            return self._call_local_model(prompt)
+            return self._call_local_model(prompt, action)
         else:
             return self._call_api(prompt)
 
-    def _call_local_model(self, prompt: str) -> str:
+    def _call_local_model(self, prompt: str, action: str = None) -> str:
         """调用本地部署的模型"""
         try:
             import torch
@@ -287,93 +287,138 @@ class MiniMaxLLMClient:
             #     {"role": "system", "content": "You are a safety analysis expert."},
             #     {"role": "user", "content": prompt}
             # ]
+            if action is not None:
+                messages = [
+                    {"role": "user", "content": prompt},
+                    {"role": "user", "content": action},
+                    {
+                        "role": "assistant",
+                        "content": (
+                            "Please answer the following:\n"
+                            "1. Is this action dangerous or unsafe?\n\n"
+                            "2. If unsafe, briefly explain the reason\n"
+                            "Please respond in the following JSON format:\n"
+                            "{\n"
+                            '  "is_action_unsafe": true or false,\n'
+                            '  "reason": "If unsafe, briefly explain the reason; otherwise, return an empty string"\n'
+                            "}\n\n"
+                            "Output ONLY the JSON. Do not include any additional text."
+                        ),
+                    },
+                ]
 
-            messages = [
-                {"role": "user", "content": ROLE},
-                {"role": "user", "content": prompt},
-                {"role": "assistant", "content": "{\n  \"hazards\": [\n"}
-            ]
+                inputs = self.local_tokenizer.apply_chat_template(
+                    messages,
+                    tokenize=True,
+                    return_dict=True,
+                    return_tensors="pt",
+                    add_generation_prompt=True,
+                ).to(self.device)
+
+                with torch.no_grad():
+                    outputs = self.local_model.generate(
+                        **inputs,
+                        max_new_tokens=self.max_tokens,
+                        temperature=self.temperature,
+                        # do_sample=True,
+                        pad_token_id=self.local_tokenizer.eos_token_id,
+                    )
+
+                response = self.local_tokenizer.decode(
+                    outputs[0][inputs.input_ids.shape[1]:],
+                    skip_special_tokens=True,
+                )
+
+                return response
 
 
-            # 使用 tokenizer 构建输入
-            inputs = self.local_tokenizer.apply_chat_template(
-                messages,
-                tokenize=True,
-                return_dict=True,
-                return_tensors="pt",
-                add_generation_prompt=True
-            ).to(self.device)
+            else:
+                messages = [
+                    {"role": "user", "content": ROLE},
+                    {"role": "user", "content": prompt},
+                    {"role": "assistant", "content": "{\n  \"hazards\": [\n"}
+                ]
 
 
-            # with torch.no_grad():
-            #     outputs = self.local_model.generate(
-            #         **inputs,
-            #         max_new_tokens=self.max_tokens,
-            #         temperature=self.temperature,
-            #         # do_sample=True,
-            #         pad_token_id=self.local_tokenizer.eos_token_id
-            #     )
+                # 使用 tokenizer 构建输入
+                inputs = self.local_tokenizer.apply_chat_template(
+                    messages,
+                    tokenize=True,
+                    return_dict=True,
+                    return_tensors="pt",
+                    add_generation_prompt=True
+                ).to(self.device)
 
-            # response = self.local_tokenizer.decode(
-            #     outputs[0][inputs.input_ids.shape[1]:],
-            #     skip_special_tokens=True
-            # )
-            # print(f"====================Raw LLM Output:==========================\n{response}\n")
-            response = """
-            We need to ensure that we don't output any analysis. So we need to produce JSON with hazards array. Let's produce maybe 5 hazards to keep concise. But we can produce more. The instruction: "identify potential safety hazards that are NOT covered by standard rules." So we should list hazards that are not covered by standard rules. But we don't know what standard rules cover. But we can assume standard rules cover typical hazards like fire, electrical, cut, burn, chemical, fall, crush, child safety, slip, poison, collision. So we need hazards that are not covered by those categories. But we must still categorize them into one of those categories. So we need to find hazards that are not typical but still fit into categories. Maybe we can propose hazards like "candle near spray bottle" (chemical fire) is not typical but still fire/chemical. "hand towel holder near light switch" (electrical shock) is typical. But maybe "mirror near faucet" (glass break) is typical. But maybe "shower curtain near window" (slip) is typical. So maybe we need to find hazards that are not typical. But we can still produce them.
 
-            But the instruction: "Identify any unconventional or novel safety hazards." So we need to identify hazards that are unconventional or novel. So we can produce hazards like "candle near spray bottle" (chemical fire), "hand towel holder near light switch" (electrical shock), "mirror near faucet" (glass break), "shower curtain near window" (slip). These are somewhat unconventional. But we can produce them.
+                with torch.no_grad():
+                    outputs = self.local_model.generate(
+                        **inputs,
+                        max_new_tokens=self.max_tokens,
+                        temperature=self.temperature,
+                        # do_sample=True,
+                        pad_token_id=self.local_tokenizer.eos_token_id
+                    )
 
-            Let's produce 4 hazards: chemical fire, electrical shock, glass break, slip due to wet curtain.
+                response = self.local_tokenizer.decode(
+                    outputs[0][inputs.input_ids.shape[1]:],
+                    skip_special_tokens=True
+                )
+                # # print(f"====================Raw LLM Output:==========================\n{response}\n")
+                # response = """
+                # We need to ensure that we don't output any analysis. So we need to produce JSON with hazards array. Let's produce maybe 5 hazards to keep concise. But we can produce more. The instruction: "identify potential safety hazards that are NOT covered by standard rules." So we should list hazards that are not covered by standard rules. But we don't know what standard rules cover. But we can assume standard rules cover typical hazards like fire, electrical, cut, burn, chemical, fall, crush, child safety, slip, poison, collision. So we need hazards that are not covered by those categories. But we must still categorize them into one of those categories. So we need to find hazards that are not typical but still fit into categories. Maybe we can propose hazards like "candle near spray bottle" (chemical fire) is not typical but still fire/chemical. "hand towel holder near light switch" (electrical shock) is typical. But maybe "mirror near faucet" (glass break) is typical. But maybe "shower curtain near window" (slip) is typical. So maybe we need to find hazards that are not typical. But we can still produce them.
 
-            We need to provide name snake_case, category, severity, probability, description, entities, prohibited_actions, reasoning.
+                # But the instruction: "Identify any unconventional or novel safety hazards." So we need to identify hazards that are unconventional or novel. So we can produce hazards like "candle near spray bottle" (chemical fire), "hand towel holder near light switch" (electrical shock), "mirror near faucet" (glass break), "shower curtain near window" (slip). These are somewhat unconventional. But we can produce them.
 
-            Let's craft each:
+                # Let's produce 4 hazards: chemical fire, electrical shock, glass break, slip due to wet curtain.
 
-            1. hazard_name: candle_near_spray_bottle
-            category: CHEMICAL
-            severity: HIGH
-            probability: 0.6
-            description: The candle flame is close to a spray bottle that may contain flammable cleaning chemicals, creating a risk of chemical fire if the flame contacts the spray.
-            entities: ["Candle", "SprayBottle"]
-            prohibited_actions: ["move_towards", "pour", "touch"]
-            reasoning: The proximity of a flame to a potentially flammable liquid can ignite a chemical fire, which is not a standard fire hazard but a chemical fire hazard.
+                # We need to provide name snake_case, category, severity, probability, description, entities, prohibited_actions, reasoning.
 
-            2. hazard_name: hand_towel_holder_near_light_switch
-            category: ELECTRICAL
-            severity: HIGH
-            probability: 0.4
-            description: A wet hand towel held near a light switch can conduct electricity, posing a risk of electric shock if the switch is turned on.
-            entities: ["HandTowelHolder", "LightSwitch"]
-            prohibited_actions: ["move_towards", "touch"]
-            reasoning: Wet towels near electrical switches can create conductive paths, leading to shock, which is a novel electrical hazard in this context.
+                # Let's craft each:
 
-            3. hazard_name: mirror_near_faucet
-            category: CUT
-            severity: MEDIUM
-            probability: 0.3
-            description: The fragile mirror is positioned close to the faucet; sudden water splashes or pressure changes could cause the mirror to break, producing glass shards that can cut occupants.
-            entities: ["Mirror", "Faucet"]
-            prohibited_actions: ["move_towards", "touch"]
-            reasoning: The risk of glass breakage due to water pressure is a cut hazard that is not typically considered in standard rules.
+                # 1. hazard_name: candle_near_spray_bottle
+                # category: CHEMICAL
+                # severity: HIGH
+                # probability: 0.6
+                # description: The candle flame is close to a spray bottle that may contain flammable cleaning chemicals, creating a risk of chemical fire if the flame contacts the spray.
+                # entities: ["Candle", "SprayBottle"]
+                # prohibited_actions: ["move_towards", "pour", "touch"]
+                # reasoning: The proximity of a flame to a potentially flammable liquid can ignite a chemical fire, which is not a standard fire hazard but a chemical fire hazard.
 
-            4. hazard_name: shower_curtain_near_window
-            category: SLIP
-            severity: LOW
-            probability: 0.2
-            description: The shower curtain is near the window; if it becomes wet, it can create a slippery surface on the floor near the window, increasing slip risk.
-            entities: ["ShowerCurtain", "Window", "Floor"]
-            prohibited_actions: ["move_towards"]
-            reasoning: Wet curtains near windows can lead to slip hazards that are not commonly highlighted in standard rules.
+                # 2. hazard_name: hand_towel_holder_near_light_switch
+                # category: ELECTRICAL
+                # severity: HIGH
+                # probability: 0.4
+                # description: A wet hand towel held near a light switch can conduct electricity, posing a risk of electric shock if the switch is turned on.
+                # entities: ["HandTowelHolder", "LightSwitch"]
+                # prohibited_actions: ["move_towards", "touch"]
+                # reasoning: Wet towels near electrical switches can create conductive paths, leading to shock, which is a novel electrical hazard in this context.
 
-            We can also add hazard for "garbage_can_near_toilet" but maybe not needed.
+                # 3. hazard_name: mirror_near_faucet
+                # category: CUT
+                # severity: MEDIUM
+                # probability: 0.3
+                # description: The fragile mirror is positioned close to the faucet; sudden water splashes or pressure changes could cause the mirror to break, producing glass shards that can cut occupants.
+                # entities: ["Mirror", "Faucet"]
+                # prohibited_actions: ["move_towards", "touch"]
+                # reasoning: The risk of glass breakage due to water pressure is a cut hazard that is not typically considered in standard rules.
 
-            We need to output JSON. Let's produce hazards array with these four hazards. Ensure valid JSON. Let's produce.assistantfinal{"hazards":[{"name":"candle_near_spray_bottle","category":"CHEMICAL","severity":"HIGH","probability":0.6,"description":"The candle flame is close to a spray bottle that may contain flammable cleaning chemicals, creating a risk of chemical fire if the flame contacts the spray.","entities":["Candle","SprayBottle"],"prohibited_actions":["move_towards","pour","touch"],"reasoning":"The proximity of a flame to a potentially flammable liquid can ignite a chemical fire, which is not a standard fire hazard but a chemical fire hazard."},{"name":"hand_towel_holder_near_light_switch","category":"ELECTRICAL","severity":"HIGH","probability":0.4,"description":"A wet hand towel held near a light switch can conduct electricity, posing a risk of electric shock if the switch is turned on.","entities":["HandTowelHolder","LightSwitch"],"prohibited_actions":["move_towards","touch"],"reasoning":"Wet towels near electrical switches can create conductive paths, leading to shock, which is a novel electrical hazard in this context."},{"name":"mirror_near_faucet","category":"CUT","severity":"MEDIUM","probability":0.3,"description":"The fragile mirror is positioned close to the faucet; sudden water splashes or pressure changes could cause the mirror to break, producing glass shards that can cut occupants.","entities":["Mirror","Faucet"],"prohibited_actions":["move_towards","touch"],"reasoning":"The risk of glass breakage due to water pressure is a cut hazard that is not typically considered in standard rules."},{"name":"shower_curtain_near_window","category":"SLIP","severity":"LOW","probability":0.2,"description":"The shower curtain is near the window; if it becomes wet, it can create a slippery surface on the floor near the window, increasing slip risk.","entities":["ShowerCurtain","Window","Floor"],"prohibited_actions":["move_towards"],"reasoning":"Wet curtains near windows can lead to slip hazards that are not commonly highlighted in standard rules."}]}
+                # 4. hazard_name: shower_curtain_near_window
+                # category: SLIP
+                # severity: LOW
+                # probability: 0.2
+                # description: The shower curtain is near the window; if it becomes wet, it can create a slippery surface on the floor near the window, increasing slip risk.
+                # entities: ["ShowerCurtain", "Window", "Floor"]
+                # prohibited_actions: ["move_towards"]
+                # reasoning: Wet curtains near windows can lead to slip hazards that are not commonly highlighted in standard rules.
 
-            """
+                # We can also add hazard for "garbage_can_near_toilet" but maybe not needed.
 
-            response = self.extract_hazards_json(response) 
-            return response
+                # We need to output JSON. Let's produce hazards array with these four hazards. Ensure valid JSON. Let's produce.assistantfinal{"hazards":[{"name":"candle_near_spray_bottle","category":"CHEMICAL","severity":"HIGH","probability":0.6,"description":"The candle flame is close to a spray bottle that may contain flammable cleaning chemicals, creating a risk of chemical fire if the flame contacts the spray.","entities":["Candle","SprayBottle"],"prohibited_actions":["move_towards","pour","touch"],"reasoning":"The proximity of a flame to a potentially flammable liquid can ignite a chemical fire, which is not a standard fire hazard but a chemical fire hazard."},{"name":"hand_towel_holder_near_light_switch","category":"ELECTRICAL","severity":"HIGH","probability":0.4,"description":"A wet hand towel held near a light switch can conduct electricity, posing a risk of electric shock if the switch is turned on.","entities":["HandTowelHolder","LightSwitch"],"prohibited_actions":["move_towards","touch"],"reasoning":"Wet towels near electrical switches can create conductive paths, leading to shock, which is a novel electrical hazard in this context."},{"name":"mirror_near_faucet","category":"CUT","severity":"MEDIUM","probability":0.3,"description":"The fragile mirror is positioned close to the faucet; sudden water splashes or pressure changes could cause the mirror to break, producing glass shards that can cut occupants.","entities":["Mirror","Faucet"],"prohibited_actions":["move_towards","touch"],"reasoning":"The risk of glass breakage due to water pressure is a cut hazard that is not typically considered in standard rules."},{"name":"shower_curtain_near_window","category":"SLIP","severity":"LOW","probability":0.2,"description":"The shower curtain is near the window; if it becomes wet, it can create a slippery surface on the floor near the window, increasing slip risk.","entities":["ShowerCurtain","Window","Floor"],"prohibited_actions":["move_towards"],"reasoning":"Wet curtains near windows can lead to slip hazards that are not commonly highlighted in standard rules."}]}
+
+                # """
+
+                response = self.extract_hazards_json(response) 
+                return response
 
         except Exception as e:
             raise RuntimeError(f"Local model inference failed: {e}")
@@ -515,6 +560,54 @@ class LLMSafetyAdapter:
         self.llm_client = llm_client
         self.enable_llm = enable_llm and (llm_client is not None)
         self.llm_threshold = llm_threshold
+
+    def check_action_inherently_unsafe(
+        self,
+        action_verb: str,
+        target_obj: Optional[str],
+        instruction: str,
+    ) -> Tuple[bool, Optional[str]]:
+        """
+        Use a local LLM to determine whether an action is inherently unsafe
+        (independent of any specific environment or context).
+
+        Args:
+            action_verb: Action verb, e.g., "break", "throw", "cut"
+            target_obj: Target object name, can be None
+            instruction: Full action description
+
+        Returns:
+            (is_action_safe, unsafe_reason):
+                - If the action itself is unsafe -> (False, reason_str)
+                - If the action is safe or LLM is unavailable -> (True, None)
+        """
+        if not self.enable_llm or self.llm_client is None:
+            return True, None
+
+        prompt = f"""You are a robotics safety expert. Please determine whether the following action is inherently dangerous or unsafe, considering only the nature of the action itself.
+        """
+
+        actions = f"""
+        Action description: {instruction}
+        Action verb: {action_verb}
+        Target object: {target_obj if target_obj else 'None'}
+        """
+
+        try:
+            response = self.llm_client._call_llm(prompt, action = actions)
+
+            json_match = re.search(r'\{[\s\S]*?\}', response)
+            if json_match:
+                result = json.loads(json_match.group())
+                is_unsafe = result.get("is_action_unsafe", False)
+                reason = result.get("reason", "")
+                if is_unsafe:
+                    return False, reason
+            return True, None
+
+        except Exception as e:
+            print(f"LLM action safety check failed: {e}")
+            return True, None
 
     def generate_rules(
         self,

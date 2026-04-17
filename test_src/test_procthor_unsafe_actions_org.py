@@ -24,8 +24,11 @@ from collections import defaultdict
 import time
 import os
 
+import torch
+
 # 可微逻辑推理器相关
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from utils.llm_safety_adapter import LLMSafetyAdapter, MiniMaxLLMClient
 from utils.scene_graph_builder import SceneGraphBuilder
 from utils.differentiable_safety_reasoner import DifferentiableSafetyReasoner
 from utils.safety_knowledge_base import (
@@ -496,18 +499,42 @@ class TestReport:
 class AI2ThorSafetyTester:
     """AI2-THOR 场景安全测试器"""
 
-    def __init__(self, controller=None, activation_threshold: float = 0.3):
+    def __init__(
+        self,
+        controller=None,
+        activation_threshold: float = 0.3,
+        enable_llm_action_check: bool = True,
+        local_model_path: str = "/models/gpt-oss-20b",
+        llm_device: str = "cuda" if torch.cuda.is_available() else "cpu",
+    ):
         self.controller = controller
         self.scene_graph_builder = SceneGraphBuilder()
         self.knowledge_base = create_embodied_safety_kb()
         self.activation_threshold = activation_threshold
-        
+
+        # 3. Initialize the safety reasoner (with optional LLM support) 
         self.reasoner = DifferentiableSafetyReasoner(
             activation_threshold=self.activation_threshold,
             learn_rule_weights=True,
             enable_llm=True,  
         )
-        self.scenes_cache: Dict[str, str] = {}  # scene_name -> predicates 
+        self.scenes_cache: Dict[str, str] = {}  # scene_name -> predicates cache
+
+        # LLM configuration
+        llm_client = None
+        if enable_llm_action_check:
+            try:
+                llm_client = MiniMaxLLMClient(
+                    use_local=True,
+                    local_model_path=local_model_path,
+                    device=llm_device,
+                )
+            except Exception as e:
+                print(f"  Warning: Unable to initialize LLM client: {e}")
+        self.llm_adapter = LLMSafetyAdapter(
+            llm_client=llm_client,
+            enable_llm=enable_llm_action_check and llm_client is not None,
+        )
 
     def _get_or_load_scene_predicates(self, scene_name: str) -> str:
         """获取或加载场景谓词（带缓存）"""
@@ -656,6 +683,38 @@ class AI2ThorSafetyTester:
             risk_category=risk_category,
         )
 
+        # Step 1: Judge if the action is inherently unsafe based on the first step
+        first_step_parsed = None
+        for step in steps:
+            parsed = parse_action_step(step)
+            if parsed:
+                first_step_parsed = parsed
+                break
+
+        if first_step_parsed:
+            action_verb, target_obj = first_step_parsed
+            is_action_safe, unsafe_reason = self.llm_adapter.check_action_inherently_unsafe(
+                action_verb, target_obj, instruction
+            )
+
+
+            if not is_action_safe:
+                result.is_safe = False
+                result.safety_score = 0.0
+                result.processing_time = time.time() - start_time
+                result.error = f"unsafe action: {unsafe_reason or action_verb}"
+                result.blocked_steps = [(
+                    0,
+                    steps[0] if steps else action_verb,
+                    action_verb,
+                    f"llm_action_inherently_unsafe"
+                )]
+                result.violations = [{
+                    'step_idx': 0,
+                    'step': steps[0] if steps else action_verb,
+                    'rule': f"{unsafe_reason}"
+                }]
+                return result
         
         # 1. 获取场景谓词
         predicates = self._get_or_load_scene_predicates(scene_name)
@@ -779,7 +838,7 @@ class AI2ThorSafetyTester:
                 report.unsafe_actions += 1
                 print(f"  结果: 不安全 (安全分数: {result.safety_score:.2f})")
                 print(f"  被阻断的步骤: {len(result.blocked_steps)}")
-                for step_idx, step, action, rule in result.blocked_steps:
+                for step_idx, step, rule in result.violations:
                     print(f"    - 步骤 {step_idx}: '{step}' 违反规则 '{rule}'")
 
 
@@ -837,6 +896,23 @@ def main():
         default=0.3,
         help='安全规则激活阈值（默认 0.3）'
     )
+    parser.add_argument(
+        '--enable-llm-action-check',
+        action='store_true',
+        default=True,
+        help='启用 LLM 动作安全性前置检查（默认启用）'
+    )
+    parser.add_argument(
+        '--disable-llm-action-check',
+        action='store_true',
+        help='禁用 LLM 动作安全性前置检查'
+    )
+    parser.add_argument(
+        '--llm-model-path',
+        type=str,
+        default='/data/junlei/NPG/models/gpt-oss-20b',
+        help='本地 LLM 模型路径（默认: models/gpt-oss-20b）'
+    )
 
     args = parser.parse_args()
 
@@ -844,7 +920,7 @@ def main():
     print("AI2-THOR 安全行为测试 Pipeline")
     print("=" * 70)
 
-    # 初始化 AI2-THOR 控制器（可选）
+    # Initialize AI2-THOR controller (optional)
     controller = None
     if not args.mock_only:
         print("\nInitializing AI2-THOR controller...")
@@ -859,10 +935,10 @@ def main():
             print("  Will use mock scene data")
             controller = None
 
-    # 创建测试器
     tester = AI2ThorSafetyTester(
         controller=controller,
-        activation_threshold=args.threshold
+        activation_threshold=args.threshold,
+        local_model_path=args.llm_model_path,
     )
 
     # 运行测试
